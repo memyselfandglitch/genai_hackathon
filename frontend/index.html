@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Executive Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="hero-brand">
+          <span class="logo" aria-hidden="true">◆</span>
+          <div>
+            <h1>Executive Assistant</h1>
+            <p class="tagline">Multi-agent orchestration · debug console</p>
+          </div>
+        </div>
+        <div id="meta" class="meta-chips" aria-live="polite"></div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar">
+          <section class="card">
+            <h2 class="card-title">
+              <span class="card-icon" aria-hidden="true">⌘</span>
+              Compose
+            </h2>
+            <label class="field">
+              <span class="field-label">User ID</span>
+              <input type="text" id="userId" value="demo-user" autocomplete="username" />
+            </label>
+            <label class="field">
+              <span class="field-label">Message</span>
+              <textarea
+                id="query"
+                rows="5"
+                placeholder="e.g. List my open tasks and suggest what to tackle first…"
+                spellcheck="true"
+              ></textarea>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="debug" checked />
+              <span class="toggle-ui"></span>
+              <span class="toggle-text">Full trace (events + tools)</span>
+            </label>
+            <div class="actions-row">
+              <button type="button" id="send" class="btn btn-primary">
+                <span class="btn-icon">▶</span>
+                Run
+              </button>
+              <button type="button" id="clear" class="btn btn-ghost">Clear</button>
+            </div>
+            <p class="hint">Shortcut: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</p>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">
+              <span class="card-icon" aria-hidden="true">⚡</span>
+              Try
+            </h2>
+            <div class="chips" id="samples"></div>
+          </section>
+        </aside>
+
+        <main class="main-out">
+          <div id="banner" class="banner hidden" role="alert"></div>
+
+          <section class="card output-card">
+            <div class="card-head">
+              <h2 class="card-title">
+                <span class="card-icon" aria-hidden="true">✦</span>
+                Model reply
+              </h2>
+              <div class="card-tools">
+                <span id="statusPill" class="pill pill-idle">—</span>
+                <button type="button" id="copyResult" class="btn btn-mini" disabled>Copy</button>
+              </div>
+            </div>
+            <div id="result" class="scroll-box prose empty-state" data-empty="Run a query to see the orchestrator response.">
+              <p class="placeholder">Run a query to see the orchestrator response.</p>
+            </div>
+          </section>
+
+          <div class="split">
+            <section class="card output-card">
+              <h2 class="card-title">
+                <span class="card-icon" aria-hidden="true">🔧</span>
+                Tools
+              </h2>
+              <div id="actions" class="scroll-box tools-list" data-empty="No tool calls for this turn.">
+                <p class="placeholder">No tool calls yet.</p>
+              </div>
+            </section>
+            <section class="card output-card">
+              <h2 class="card-title">
+                <span class="card-icon" aria-hidden="true">◎</span>
+                Timeline
+              </h2>
+              <div id="trace" class="scroll-box timeline" data-empty="Enable full trace to see each event.">
+                <p class="placeholder">Enable full trace to see each event.</p>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+
+      <footer class="foot">
+        <span><code>POST /query</code></span>
+        <a href="/docs">API docs</a>
+        <a href="/health">Health</a>
+        <a href="/api/meta">Meta JSON</a>
+      </footer>
+    </div>
+
+    <div id="loading" class="loading-overlay hidden" aria-hidden="true">
+      <div class="loading-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Running agents…</p>
+      </div>
+    </div>
+
+    <script src="/ui/app.js" type="module"></script>
+  </body>
+</html>

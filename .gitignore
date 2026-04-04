@@ -1,0 +1,80 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Project-local databases (SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs and temp
+*.log
+tmp/
+temp/
+*.tmp
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pyenv / direnv
+.python-version
+.envrc
+
+# Test / CI
+.coverage.*
+coverage.xml
+.tox/
+.nox/
+
+# Node (if you add a JS toolchain under frontend/)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+# Local secrets & keys (never commit)
+*.pem
+*.key
+id_rsa
+*.p12
+
+# Patch / backup files
+*.orig
+*~
