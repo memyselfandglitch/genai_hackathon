@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.context import get_exec_context
+from app.core.tool_exec_bridge import adk_after_tool, adk_before_tool, adk_on_tool_error
 from app.core.logging import get_logger, trace_event
 from app.db.models import User
 from app.db.session import get_session_factory
@@ -54,6 +55,9 @@ def create_location_agent() -> LlmAgent:
     return LlmAgent(
         model=settings.gemini_model,
         name="location_agent",
+        before_tool_callback=adk_before_tool,
+        after_tool_callback=adk_after_tool,
+        on_tool_error_callback=adk_on_tool_error,
         description="Computes routes and travel times using Google Maps MCP tools.",
         instruction=(
             "You translate addresses into travel durations. "

@@ -214,6 +214,51 @@ If `/query` errors on the model, fix the API key; if the UI is 404, ensure `back
 
 The UI is static files under `frontend/` served by the **same** FastAPI process at `/ui/` — you deploy **one** container or process.
 
+### Google Cloud — ADK `deploy cloud_run` (agents API)
+
+This repo exposes **`root_agent`** in the **`backend/`** package for the official ADK CLI ([Cloud Run deploy docs](https://google.github.io/adk-docs/deploy/cloud-run/)).
+
+Prerequisites: [Google Cloud SDK](https://cloud.google.com/sdk/docs/install), `pip install google-adk`, `gcloud auth login`, `gcloud config set project YOUR_PROJECT`.
+
+**Auth / GenAI (pick one):**
+
+- **Vertex AI** (typical on GCP):
+
+  ```bash
+  export GOOGLE_CLOUD_PROJECT="your-project-id"
+  export GOOGLE_CLOUD_LOCATION="us-central1"
+  export GOOGLE_GENAI_USE_VERTEXAI=True
+  ```
+
+- **AI Studio API key** (store in Secret Manager for Cloud Run):
+
+  ```bash
+  export GOOGLE_CLOUD_PROJECT="your-project-id"
+  export GOOGLE_CLOUD_LOCATION="us-central1"
+  export GOOGLE_GENAI_USE_VERTEXAI=False
+  echo "your-key" | gcloud secrets create GOOGLE_API_KEY --data-file=- --project=your-project-id
+  # Grant the Cloud Run runtime service account secretAccessor on GOOGLE_API_KEY
+  ```
+
+From **`backend/`** (this directory must be the agent folder so `app/`, `requirements.txt`, and `agent.py` are included):
+
+```bash
+cd backend
+adk deploy cloud_run \
+  --project="${GOOGLE_CLOUD_PROJECT}" \
+  --region="${GOOGLE_CLOUD_LOCATION}" \
+  --app_name="${APP_NAME:-agents}" \
+  --service_name="executive-assistant" \
+  --port=8000 \
+  .
+```
+
+Optional: add **`--with_ui`** to ship the ADK web dev UI alongside the API (your custom HTML UI is still on **`app.main`** / Docker, not this command).
+
+**Environment on Cloud Run:** set **`DATABASE_URL`** for AlloyDB or Cloud SQL (`postgresql+asyncpg://…`), and any **`MCP_*_SSE_URL`** / Workspace tokens as needed. SQLite on Cloud Run’s ephemeral disk is only OK for demos.
+
+**FastAPI + static `/ui/` on GCP:** use **`Dockerfile`** + **`gcloud run deploy --source .`** from `backend/`, or the “Docker” section below— that path keeps **`POST /query`** and the Assistant UI.
+
 ### Docker (recommended)
 
 From the `backend/` directory (Docker Desktop or any host with Docker):

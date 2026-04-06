@@ -22,6 +22,7 @@ from app.agents.notes_agent import create_notes_agent
 from app.agents.task_agent import create_task_agent
 from app.core.config import get_settings
 from app.core.context import get_exec_context
+from app.core.tool_exec_bridge import adk_after_tool, adk_before_tool, adk_on_tool_error
 from app.core.logging import get_logger, trace_event
 from app.db.memory import LongTermMemory
 from app.db.session import get_session_factory
@@ -65,7 +66,11 @@ async def reflect_on_plan_impl(
     if not api_key:
         return {"approved": True, "critique": "No API key for standalone reflection call", "risks": []}
 
-    trace_event(logger, "agent", {"step": "reflect_on_plan", "user": get_exec_context().user_id})
+    trace_event(
+        logger,
+        "agent",
+        {"step": "reflect_on_plan", "user": tool_context.session.user_id},
+    )
     try:
         from google import genai
 
@@ -134,6 +139,9 @@ Always produce a concise final answer for the user after tools succeed.
     return LlmAgent(
         model=settings.gemini_model,
         name="executive_orchestrator",
+        before_tool_callback=adk_before_tool,
+        after_tool_callback=adk_after_tool,
+        on_tool_error_callback=adk_on_tool_error,
         description="Plans and coordinates specialized agents and MCP analytics.",
         instruction=instruction,
         tools=[
