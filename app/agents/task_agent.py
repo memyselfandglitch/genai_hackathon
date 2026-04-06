@@ -15,6 +15,7 @@ from app.core.context import get_exec_context
 from app.core.logging import get_logger, trace_event
 from app.db.models import Task, UserPreference
 from app.db.session import get_session_factory
+from app.tools.mcp_clients import get_tasks_client
 
 logger = get_logger(__name__)
 
@@ -110,16 +111,63 @@ async def prioritize_tasks_impl() -> dict[str, Any]:
     return {"ordered": ordered}
 
 
+async def list_google_tasks_impl(
+    show_completed: bool = False,
+    max_results: int = 20,
+) -> dict[str, Any]:
+    ctx = get_exec_context()
+    trace_event(logger, "tool", {"agent": "task", "tool": "list_google_tasks", "user": ctx.user_id})
+    client = get_tasks_client()
+    return await client.call_tool(
+        "list_tasks",
+        {"show_completed": show_completed, "max_results": max_results},
+    )
+
+
+async def create_google_task_impl(
+    title: str,
+    notes: Optional[str] = None,
+    due_iso: Optional[str] = None,
+    status: str = "needsAction",
+    priority: int = 3,
+    mirror_to_local_db: bool = True,
+) -> dict[str, Any]:
+    ctx = get_exec_context()
+    trace_event(logger, "tool", {"agent": "task", "tool": "create_google_task", "user": ctx.user_id})
+    client = get_tasks_client()
+    remote = await client.call_tool(
+        "create_task",
+        {"title": title, "notes": notes, "due_iso": due_iso, "status": status},
+    )
+    local_result: Optional[dict[str, Any]] = None
+    if mirror_to_local_db and not remote.get("error"):
+        local_status = "done" if status == "completed" else "open"
+        local_result = await upsert_task_impl(
+            title=title,
+            status=local_status,
+            priority=priority,
+            due_iso=due_iso,
+            description=notes,
+        )
+    return {"remote": remote, "local": local_result}
+
+
 def create_task_agent() -> LlmAgent:
     settings = get_settings()
     return LlmAgent(
         model=settings.gemini_model,
         name="task_agent",
         description="Manages user tasks: list, create/update, and prioritize work.",
-        instruction="You are the task manager. Use tools to persist changes. Prefer clear titles and realistic priorities (1=urgent).",
+        instruction=(
+            "You are the task manager. Use tools to persist changes. "
+            "Prefer clear titles and realistic priorities (1=urgent). "
+            "Use Google Tasks tools when the user asks about their Google task list."
+        ),
         tools=[
             FunctionTool(list_tasks_impl),
             FunctionTool(upsert_task_impl),
             FunctionTool(prioritize_tasks_impl),
+            FunctionTool(list_google_tasks_impl),
+            FunctionTool(create_google_task_impl),
         ],
     )

@@ -40,6 +40,16 @@ class Settings(BaseSettings):
     # MCP endpoints (optional — mocks used if unset)
     mcp_bigquery_sse_url: Optional[str] = None
     mcp_maps_sse_url: Optional[str] = None
+    mcp_calendar_sse_url: Optional[str] = None
+    mcp_tasks_sse_url: Optional[str] = None
+
+    # Optional direct Google Workspace REST connectivity
+    google_workspace_access_token: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("GOOGLE_WORKSPACE_ACCESS_TOKEN", "GOOGLE_OAUTH_ACCESS_TOKEN"),
+    )
+    google_calendar_id: str = "primary"
+    google_tasks_list_id: str = "@default"
 
     # Workflow
     max_agent_steps: int = 32

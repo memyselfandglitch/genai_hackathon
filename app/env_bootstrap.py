@@ -36,6 +36,8 @@ def load_backend_env() -> None:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
         if "=" not in line:
             continue
         key, _, val = line.partition("=")

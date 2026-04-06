@@ -1,6 +1,9 @@
 const $ = (id) => document.getElementById(id);
 
 const SAMPLES = [
+  "Create a daily brief for today and protect a deep-work block.",
+  "Check my Google Calendar this afternoon and flag conflicts.",
+  "Add a follow-up item to my Google Tasks.",
   "What are my open tasks?",
   "List my calendar for today and flag any conflicts.",
   "What did I write in my notes about the board?",
@@ -43,6 +46,9 @@ async function loadMeta() {
       `<span class="chip">${m.mcp_package_installed ? "mcp pkg ✓" : "mcp pkg —"}</span>`,
       `<span class="chip">ADK <code>${escapeHtml(m.adk_app_name)}</code></span>`,
       `<span class="chip">Model <code>${escapeHtml(m.gemini_model)}</code></span>`,
+      `<span class="chip">${m.google_workspace_connected ? "Workspace connected" : "Workspace mock mode"}</span>`,
+      `<span class="chip">Calendar <code>${escapeHtml(m.google_calendar_mode || "mock")}</code></span>`,
+      `<span class="chip">Tasks <code>${escapeHtml(m.google_tasks_mode || "mock")}</code></span>`,
     ];
     host.innerHTML = chips.join("");
   } catch {

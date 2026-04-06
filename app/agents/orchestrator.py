@@ -26,6 +26,7 @@ from app.core.logging import get_logger, trace_event
 from app.db.memory import LongTermMemory
 from app.db.session import get_session_factory
 from app.tools.mcp_clients import get_bigquery_mcp, schemas_bundle
+from app.workflows.daily_brief import build_daily_brief_impl
 
 logger = get_logger(__name__)
 
@@ -122,6 +123,7 @@ Behavior:
 Proactive suggestions:
 - If the user proposes a meeting, check conflicts and suggest alternative slots.
 - Mention travel buffer when locations imply consecutive off-site moves.
+- For planning or overloaded-day requests, use build_daily_brief_impl to create an execution-ready day plan.
 
 MCP tool JSON contracts (for reasoning about structured data):
 {schema_ref}
@@ -141,6 +143,7 @@ Always produce a concise final answer for the user after tools succeed.
             AgentTool(loc),
             FunctionTool(load_memory_context_impl),
             FunctionTool(bigquery_analytics_impl),
+            FunctionTool(build_daily_brief_impl),
             FunctionTool(reflect_on_plan_impl),
         ],
     )

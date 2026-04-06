@@ -19,6 +19,7 @@ from app.core.context import get_exec_context
 from app.core.logging import get_logger, trace_event
 from app.db.models import Event, UserPreference
 from app.db.session import get_session_factory
+from app.tools.mcp_clients import get_calendar_client
 
 logger = get_logger(__name__)
 
@@ -69,6 +70,49 @@ async def create_event_impl(
         session.add(ev)
         await session.commit()
         return {"status": "created", "id": ev.id}
+
+
+async def list_google_calendar_events_impl(
+    start_iso: str,
+    end_iso: str,
+    max_results: int = 20,
+) -> dict[str, Any]:
+    """Lists events from Google Calendar when configured, else uses mock fixtures."""
+    ctx = get_exec_context()
+    trace_event(logger, "tool", {"agent": "calendar", "tool": "list_google_calendar_events", "user": ctx.user_id})
+    client = get_calendar_client()
+    return await client.call_tool(
+        "list_events",
+        {"time_min": start_iso, "time_max": end_iso, "max_results": max_results},
+    )
+
+
+async def create_google_calendar_event_impl(
+    title: str,
+    start_iso: str,
+    end_iso: str,
+    location: Optional[str] = None,
+    description: Optional[str] = None,
+    mirror_to_local_db: bool = True,
+) -> dict[str, Any]:
+    """Creates an event in Google Calendar and optionally mirrors it into the local DB."""
+    ctx = get_exec_context()
+    trace_event(logger, "tool", {"agent": "calendar", "tool": "create_google_calendar_event", "user": ctx.user_id})
+    client = get_calendar_client()
+    remote = await client.call_tool(
+        "create_event",
+        {
+            "title": title,
+            "start_iso": start_iso,
+            "end_iso": end_iso,
+            "location": location,
+            "description": description,
+        },
+    )
+    local_result: Optional[dict[str, Any]] = None
+    if mirror_to_local_db and not remote.get("error"):
+        local_result = await create_event_impl(title=title, start_iso=start_iso, end_iso=end_iso, location=location)
+    return {"remote": remote, "local": local_result}
 
 
 async def detect_conflicts_impl(
@@ -163,11 +207,14 @@ def create_calendar_agent() -> LlmAgent:
         instruction=(
             "You are the calendar specialist. Use tools to read/write events. "
             "Always call detect_conflicts before creating overlapping meetings. "
-            "Proactively suggest_slots when the user asks for availability."
+            "Proactively suggest_slots when the user asks for availability. "
+            "Use Google Calendar tools when the user asks to check or create events in their Google Calendar."
         ),
         tools=[
             FunctionTool(list_events_impl),
             FunctionTool(create_event_impl),
+            FunctionTool(list_google_calendar_events_impl),
+            FunctionTool(create_google_calendar_event_impl),
             FunctionTool(detect_conflicts_impl),
             FunctionTool(suggest_slots_impl),
         ],

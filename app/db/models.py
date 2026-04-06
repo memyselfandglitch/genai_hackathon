@@ -84,6 +84,33 @@ class Note(Base):
     user: Mapped["User"] = relationship(back_populates="notes")
 
 
+class ConversationTurn(Base):
+    __tablename__ = "conversation_turns"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(128), index=True, nullable=True)
+    user_message: Mapped[str] = mapped_column(Text)
+    assistant_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="ok")
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    actions_json: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class WorkflowRun(Base):
+    __tablename__ = "workflow_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    workflow_name: Mapped[str] = mapped_column(String(128), index=True)
+    status: Mapped[str] = mapped_column(String(32), default="ok")
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    input_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    output_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class UserPreference(Base):
     """Long-term preferences: preferred meeting windows, timezone, learned patterns."""
 

@@ -28,6 +28,8 @@ from app.agents.orchestrator import create_orchestrator_agent
 from app.core.config import get_settings
 from app.core.context import ExecContext, reset_exec_context, set_exec_context
 from app.core.logging import get_logger, trace_event
+from app.db.memory import LongTermMemory
+from app.db.session import get_session_factory
 
 logger = get_logger(__name__)
 
@@ -41,7 +43,7 @@ class WorkflowResult:
     error: Optional[str] = None
 
 
-def _extract_text(content: types.Content | None) -> str:
+def _extract_text(content: Optional[types.Content]) -> str:
     if not content or not content.parts:
         return ""
     chunks: list[str] = []
@@ -96,7 +98,7 @@ async def run_turn(
 ) -> WorkflowResult:
     settings = get_settings()
     debug = settings.debug if debug is None else debug
-    session_id = session_id or str(uuid.uuid4())
+    session_id = session_id or f"{user_id}-primary"
     app_name = settings.app_name
 
     root_agent = create_orchestrator_agent()
@@ -184,20 +186,55 @@ async def run_turn(
                 trace_event(logger, "failure", {"attempt": attempt, "error": last_error})
                 if attempt == max_retries:
                     status = "error"
-                    return WorkflowResult(
+                    result = WorkflowResult(
                         status=status,
                         result="",
                         actions=actions,
                         trace=trace,
                         error=last_error,
                     )
+                    await _persist_turn(
+                        user_id=user_id,
+                        session_id=session_id,
+                        query=query,
+                        result=result,
+                    )
+                    return result
                 await asyncio.sleep(0.2 * attempt)
 
-        return WorkflowResult(
+        result = WorkflowResult(
             status=status,
             result=final_text or "(no text response)",
             actions=actions,
             trace=trace,
         )
+        await _persist_turn(
+            user_id=user_id,
+            session_id=session_id,
+            query=query,
+            result=result,
+        )
+        return result
     finally:
         reset_exec_context(token)
+
+
+async def _persist_turn(
+    *,
+    user_id: str,
+    session_id: str,
+    query: str,
+    result: WorkflowResult,
+) -> None:
+    factory = get_session_factory()
+    async with factory() as session:
+        mem = LongTermMemory(session, user_id)
+        await mem.record_turn(
+            session_id=session_id,
+            user_message=query,
+            assistant_message=result.result,
+            status=result.status,
+            actions=result.actions,
+            error=result.error,
+        )
+        await session.commit()

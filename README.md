@@ -1,8 +1,16 @@
-# Executive Assistant — Multi-Agent System
+# Executive Assistant Copilot — Multi-Agent System
 
-Production-oriented backend that combines **Google ADK** (Gemini Flash), **FastAPI**, **MCP-style clients** (BigQuery, Google Maps), and an **AlloyDB-compatible** SQL layer (PostgreSQL in production, SQLite for local development).
+Production-oriented backend that combines **Google ADK** (Gemini Flash), **FastAPI**, **MCP-style clients** (BigQuery, Google Maps, Google Calendar, Google Tasks), and an **AlloyDB-compatible** SQL layer (PostgreSQL in production, SQLite for local development).
 
-This is not a single chatbot: a root **orchestrator** agent delegates to specialist sub-agents via `AgentTool`, runs a **reflection** tool for risky plans, and uses **long-term memory** (preferences + notes) plus **short-term** ADK session state.
+This is not a single chatbot: a root **orchestrator** agent delegates to specialist sub-agents via `AgentTool`, runs a **reflection** tool for risky plans, and uses **durable long-term memory** (preferences, notes, conversation turns, workflow history) plus **short-term** ADK session state.
+
+## Product USP
+
+The prototype now emphasizes a stronger, real-world use case than a generic assistant: **Chief-of-Staff Autopilot**.
+
+- It does not just answer questions. It builds an execution-ready **daily brief** from calendar events, open tasks, saved notes, user preferences, and travel constraints.
+- It persists **conversation memory** and **workflow runs** into SQL, so future turns can recover context even when the runtime session is recreated.
+- It exposes that memory via API for debugging and demo evidence, which makes the multi-agent behavior inspectable.
 
 ## Architecture
 
@@ -20,8 +28,9 @@ Client
 - **Orchestrator** (`app/agents/orchestrator.py`): planning, delegation, MCP tool contracts, reflection.
 - **Sub-agents** (`calendar_agent`, `task_agent`, `notes_agent`, `location_agent`): domain `LlmAgent`s with `FunctionTool`s.
 - **Workflows** (`app/workflows/executor.py`): drains `Runner.run_async`, aggregates tool calls, handles retries with fresh sessions.
-- **Memory** (`app/db/memory.py`): long-term DB context; ADK `InMemorySessionService` for conversation state.
-- **MCP** (`app/tools/mcp_clients.py`): BigQuery + Maps tool schemas; mocks when URLs are unset.
+- **Memory** (`app/db/memory.py`): long-term DB context, persisted conversation turns, and workflow history; ADK `InMemorySessionService` for turn-local state.
+- **External tools** (`app/tools/mcp_clients.py`): BigQuery, Maps, Google Calendar, and Google Tasks with MCP, direct REST, or mock modes.
+- **Daily brief workflow** (`app/workflows/daily_brief.py`): a high-value workflow that converts fragmented data into a plan for the day.
 
 ### Repository layout
 
@@ -47,7 +56,7 @@ hackathon/
         ├── core/              # config, logging, runtime
         ├── db/                # models, session, memory
         ├── tools/mcp_clients.py
-        └── workflows/executor.py
+        └── workflows/         # executor + daily brief workflow
 ```
 
 ## Setup
@@ -86,6 +95,12 @@ export GEMINI_MODEL="gemini-flash-latest"
 # Optional: real MCP gateways
 # export MCP_BIGQUERY_SSE_URL="https://..."
 # export MCP_MAPS_SSE_URL="https://..."
+# export MCP_CALENDAR_SSE_URL="https://..."
+# export MCP_TASKS_SSE_URL="https://..."
+# Optional: direct Google Workspace REST access
+# export GOOGLE_WORKSPACE_ACCESS_TOKEN="ya29..."
+# export GOOGLE_CALENDAR_ID="primary"
+# export GOOGLE_TASKS_LIST_ID="@default"
 ```
 
 3. Seed demo data (optional):
@@ -148,7 +163,11 @@ Liveness check.
 
 ### `GET /api/meta`
 
-Python version, whether the MCP SDK can load, `adk_app_name`, and `gemini_model` (for the debug UI and operators).
+Python version, whether the MCP SDK can load, `adk_app_name`, `gemini_model`, and whether Google Calendar / Google Tasks are in `mock`, `rest`, or `mcp` mode.
+
+### `GET /api/users/{user_id}/memory`
+
+Returns persisted conversation turns and workflow runs for a user. This is useful for demoing agent memory continuity and verifying that workflows are being stored in the database.
 
 ## Example `curl` calls
 
@@ -157,13 +176,15 @@ curl -s http://127.0.0.1:8080/health
 
 curl -s http://127.0.0.1:8080/api/meta | jq .
 
+curl -s http://127.0.0.1:8080/api/users/demo-user/memory | jq .
+
 curl -s http://127.0.0.1:8080/query \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"demo-user","query":"Suggest a free hour tomorrow morning for a deep work block."}' | jq .
+  -d '{"user_id":"demo-user","query":"Create a daily brief for today and protect a deep work block."}' | jq .
 
 curl -s "http://127.0.0.1:8080/query?debug=true" \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"demo-user","query":"Add a task to call CFO about margins."}' | jq .
+  -d '{"user_id":"demo-user","query":"Check my Google Calendar this afternoon and add a follow-up item to Google Tasks."}' | jq .
 ```
 
 ## End-to-end check (API + UI + agents)

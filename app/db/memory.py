@@ -9,7 +9,7 @@ from typing import Any, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Note, User, UserPreference
+from app.db.models import ConversationTurn, Note, User, UserPreference, WorkflowRun
 
 
 @dataclass
@@ -38,7 +38,7 @@ class LongTermMemory:
         )
         return r.scalar_one_or_none()
 
-    async def ensure_user(self, email: str | None = None) -> User:
+    async def ensure_user(self, email: Optional[str] = None) -> User:
         r = await self._db.execute(select(User).where(User.id == self._user_id))
         u = r.scalar_one_or_none()
         if u:
@@ -58,6 +58,20 @@ class LongTermMemory:
             .limit(note_limit)
         )
         notes = r.scalars().all()
+        turns_result = await self._db.execute(
+            select(ConversationTurn)
+            .where(ConversationTurn.user_id == self._user_id)
+            .order_by(ConversationTurn.created_at.desc())
+            .limit(4)
+        )
+        turns = turns_result.scalars().all()
+        workflows_result = await self._db.execute(
+            select(WorkflowRun)
+            .where(WorkflowRun.user_id == self._user_id)
+            .order_by(WorkflowRun.created_at.desc())
+            .limit(3)
+        )
+        workflows = workflows_result.scalars().all()
         parts: list[str] = []
         if prefs:
             parts.append(
@@ -69,4 +83,61 @@ class LongTermMemory:
             for n in notes:
                 snippet = (n.body or "")[:200]
                 parts.append(f"- {n.title or 'untitled'}: {snippet}")
+        if turns:
+            parts.append("Recent conversation memory:")
+            for t in turns:
+                q = (t.user_message or "")[:140]
+                a = (t.assistant_message or "")[:180]
+                parts.append(f"- User: {q}")
+                if a:
+                    parts.append(f"  Assistant: {a}")
+        if workflows:
+            parts.append("Recent workflow outcomes:")
+            for w in workflows:
+                summary = (w.summary or "")[:220]
+                parts.append(f"- {w.workflow_name} [{w.status}]: {summary}")
         return "\n".join(parts) if parts else "(no long-term context yet)"
+
+    async def record_turn(
+        self,
+        *,
+        session_id: Optional[str],
+        user_message: str,
+        assistant_message: Optional[str],
+        status: str,
+        actions: Optional[list[dict[str, Any]]] = None,
+        error: Optional[str] = None,
+    ) -> ConversationTurn:
+        turn = ConversationTurn(
+            user_id=self._user_id,
+            session_id=session_id,
+            user_message=user_message,
+            assistant_message=assistant_message,
+            status=status,
+            error=error,
+            actions_json=actions,
+        )
+        self._db.add(turn)
+        await self._db.flush()
+        return turn
+
+    async def record_workflow(
+        self,
+        *,
+        workflow_name: str,
+        status: str,
+        summary: Optional[str],
+        input_json: Optional[dict[str, Any]] = None,
+        output_json: Optional[dict[str, Any]] = None,
+    ) -> WorkflowRun:
+        run = WorkflowRun(
+            user_id=self._user_id,
+            workflow_name=workflow_name,
+            status=status,
+            summary=summary,
+            input_json=input_json,
+            output_json=output_json,
+        )
+        self._db.add(run)
+        await self._db.flush()
+        return run

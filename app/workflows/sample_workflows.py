@@ -41,30 +41,54 @@ async def seed_demo_user(user_id: str = "demo-user") -> None:
                 )
             )
         now = datetime.utcnow().replace(hour=10, minute=0, second=0, microsecond=0)
-        session.add(
-            Event(
-                user_id=user_id,
-                title="Standup",
-                start_at=now,
-                end_at=now + timedelta(minutes=30),
-                location="Zoom",
+        standup = (
+            await session.execute(
+                select(Event).where(
+                    Event.user_id == user_id,
+                    Event.title == "Standup",
+                    Event.start_at == now,
+                )
             )
-        )
-        session.add(
-            Task(
-                user_id=user_id,
-                title="Review Q1 plan",
-                priority=1,
-                status="open",
+        ).scalar_one_or_none()
+        if not standup:
+            session.add(
+                Event(
+                    user_id=user_id,
+                    title="Standup",
+                    start_at=now,
+                    end_at=now + timedelta(minutes=30),
+                    location="Zoom",
+                )
             )
-        )
-        session.add(
-            Note(
-                user_id=user_id,
-                title="Board expectations",
-                body="We should emphasize margin expansion and hiring freeze in Q2.",
+
+        q1_task = (
+            await session.execute(
+                select(Task).where(Task.user_id == user_id, Task.title == "Review Q1 plan")
             )
-        )
+        ).scalar_one_or_none()
+        if not q1_task:
+            session.add(
+                Task(
+                    user_id=user_id,
+                    title="Review Q1 plan",
+                    priority=1,
+                    status="open",
+                )
+            )
+
+        board_note = (
+            await session.execute(
+                select(Note).where(Note.user_id == user_id, Note.title == "Board expectations")
+            )
+        ).scalar_one_or_none()
+        if not board_note:
+            session.add(
+                Note(
+                    user_id=user_id,
+                    title="Board expectations",
+                    body="We should emphasize margin expansion and hiring freeze in Q2.",
+                )
+            )
         await session.commit()
     print(f"Seeded user {user_id} with overlapping event, task, and note.")
 
