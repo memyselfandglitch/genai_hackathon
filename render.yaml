@@ -1,0 +1,15 @@
+# Render Blueprint: connect this repo (root = backend/) and deploy as a Web Service from Dockerfile.
+services:
+  - type: web
+    name: executive-assistant
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./exec_assistant.db
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest

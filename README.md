@@ -210,6 +210,57 @@ If `/query` errors on the model, fix the API key; if the UI is 404, ensure `back
 - Swap MCP mocks for real servers: set `MCP_*_SSE_URL` and align `HttpSSEMCPClient` with your gateway’s JSON-RPC shape.
 - Replace `InMemorySessionService` with `DatabaseSessionService` from ADK for durable multi-instance sessions.
 
+## Deployment (frontend + backend)
+
+The UI is static files under `frontend/` served by the **same** FastAPI process at `/ui/` — you deploy **one** container or process.
+
+### Docker (recommended)
+
+From the `backend/` directory (Docker Desktop or any host with Docker):
+
+```bash
+docker build -t executive-assistant .
+docker run --rm -p 8080:8080 \
+  -e GOOGLE_API_KEY="your-key" \
+  executive-assistant
+```
+
+Open **http://localhost:8080/** (redirects to `/ui/`). Override port with `-e PORT=3000` if needed.
+
+**Compose** (SQLite persisted in a volume; set `GOOGLE_API_KEY` in `.env` or the shell):
+
+```bash
+cd backend
+docker compose up --build
+```
+
+For **PostgreSQL** (e.g. managed DB), set `DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db?ssl=require` in the environment and drop the SQLite volume if unused.
+
+### Render
+
+1. New **Web Service** → connect the repo whose root is `backend/` (or set root directory to `backend` in the dashboard).
+2. **Runtime**: Docker (uses `Dockerfile`).
+3. Add environment variable **`GOOGLE_API_KEY`** (required for `/query`).
+4. Optional: replace **`DATABASE_URL`** with a Render Postgres URL (`postgresql+asyncpg://…`).
+
+If you use [Infrastructure as Code](https://render.com/docs/blueprint-spec), a sample `render.yaml` is included in this folder; adjust the service name and DB as needed.
+
+### Fly.io
+
+From `backend/` after [installing `flyctl`](https://fly.io/docs/hands-on/install-flyctl/):
+
+```bash
+fly launch --no-deploy   # choose app name & region
+fly secrets set GOOGLE_API_KEY=your-key
+fly deploy
+```
+
+Ensure the machine exposes **8080** (Fly sets `PORT`; the image CMD respects it).
+
+### Railway / other PaaS
+
+Use **Dockerfile** deploy, set **`GOOGLE_API_KEY`**, and assign **`PORT`** if the platform injects it (the start command uses `${PORT:-8080}`).
+
 ## License
 
 Apache-2.0 (same family as Google ADK samples).
