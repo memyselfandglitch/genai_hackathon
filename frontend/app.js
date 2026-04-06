@@ -62,7 +62,8 @@ function renderSamples() {
     (q, i) =>
       `<button type="button" class="sample-chip" data-i="${i}">${escapeHtml(q)}</button>`
   ).join("");
-  wrap.querySelectorAll(".sample-chip").forEach((btn) => {
+   wrap.querySelectorAll(".sample-chip").forEach((btn, i) => {
+    btn.style.animationDelay = `${0.06 + i * 0.045}s`;
     btn.addEventListener("click", () => {
       $("query").value = SAMPLES[Number(btn.dataset.i)];
       $("query").focus();
@@ -93,7 +94,7 @@ function renderActions(actions) {
 
 function renderTrace(trace, debugEnabled) {
   if (!debugEnabled) {
-    return '<p class="placeholder">Turn on “Full trace” to see each model event.</p>';
+    return '<p class="placeholder">Turn on full trace to see each model event.</p>';
   }
   if (!trace || !trace.length) {
     return '<p class="placeholder">No timeline entries (empty trace).</p>';
@@ -146,9 +147,9 @@ async function runQuery() {
   setStatusPill("…", false);
   $("copyResult").disabled = true;
 
-  setResultHtml('<p class="placeholder">Waiting…</p>', true);
-  $("actions").innerHTML = '<p class="placeholder">…</p>';
-  $("trace").innerHTML = '<p class="placeholder">…</p>';
+  setResultHtml('<p class="placeholder">One moment…</p>', true);
+  $("actions").innerHTML = '<p class="placeholder">Loading tools…</p>';
+  $("trace").innerHTML = '<p class="placeholder">Loading timeline…</p>';
 
   const url = new URL("/query", window.location.origin);
   if (debug) url.searchParams.set("debug", "true");
@@ -201,7 +202,7 @@ async function runQuery() {
 
 function clearAll() {
   $("query").value = "";
-  setResultHtml('<p class="placeholder">Run a query to see the orchestrator response.</p>', true);
+  setResultHtml('<p class="placeholder">Run a query to see the reply.</p>', true);
   $("actions").innerHTML = '<p class="placeholder">No tool calls yet.</p>';
   $("trace").innerHTML = '<p class="placeholder">Enable full trace to see each event.</p>';
   setStatusPill("—", false);

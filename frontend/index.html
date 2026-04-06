@@ -3,23 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Executive Assistant Copilot</title>
+    <title>Assistant</title>
+    <link rel="icon" href="/ui/brand.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/ui/styles.css" />
   </head>
   <body>
-    <div class="shell">
+    <div class="shell shell-enter">
       <header class="hero">
         <div class="hero-brand">
-          <span class="logo" aria-hidden="true">◆</span>
-          <div>
-            <h1>Executive Assistant</h1>
-            <p class="tagline">Chief-of-staff autopilot · multi-agent orchestration · debug console</p>
+          <div class="logo-wrap">
+            <img class="logo" src="/ui/brand.svg" width="44" height="44" alt="" decoding="async" />
+            <span class="logo-ring" aria-hidden="true"></span>
+          </div>
+          <div class="hero-titles">
+            <h1>Assistant</h1>
+            <p class="tagline">Natural language to your tools and calendar</p>
           </div>
         </div>
         <div id="meta" class="meta-chips" aria-live="polite"></div>
@@ -28,10 +32,7 @@
       <div class="workspace">
         <aside class="sidebar">
           <section class="card">
-            <h2 class="card-title">
-              <span class="card-icon" aria-hidden="true">⌘</span>
-              Compose
-            </h2>
+            <h2 class="card-title">Compose</h2>
             <label class="field">
               <span class="field-label">User ID</span>
               <input type="text" id="userId" value="demo-user" autocomplete="username" />
@@ -41,7 +42,7 @@
               <textarea
                 id="query"
                 rows="5"
-                placeholder="e.g. Build my daily brief and protect focus time around meetings…"
+                placeholder="Ask anything about tasks, events, or notes…"
                 spellcheck="true"
               ></textarea>
             </label>
@@ -51,20 +52,14 @@
               <span class="toggle-text">Full trace (events + tools)</span>
             </label>
             <div class="actions-row">
-              <button type="button" id="send" class="btn btn-primary">
-                <span class="btn-icon">▶</span>
-                Run
-              </button>
+              <button type="button" id="send" class="btn btn-primary">Run</button>
               <button type="button" id="clear" class="btn btn-ghost">Clear</button>
             </div>
-            <p class="hint">Shortcut: <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run</p>
+            <p class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to run</p>
           </section>
 
           <section class="card">
-            <h2 class="card-title">
-              <span class="card-icon" aria-hidden="true">⚡</span>
-              Try
-            </h2>
+            <h2 class="card-title">Suggestions</h2>
             <div class="chips" id="samples"></div>
           </section>
         </aside>
@@ -74,36 +69,27 @@
 
           <section class="card output-card">
             <div class="card-head">
-              <h2 class="card-title">
-                <span class="card-icon" aria-hidden="true">✦</span>
-                Model reply
-              </h2>
+              <h2 class="card-title">Response</h2>
               <div class="card-tools">
                 <span id="statusPill" class="pill pill-idle">—</span>
                 <button type="button" id="copyResult" class="btn btn-mini" disabled>Copy</button>
               </div>
             </div>
-            <div id="result" class="scroll-box prose empty-state" data-empty="Run a query to see the orchestrator response.">
-              <p class="placeholder">Run a query to see the orchestrator response.</p>
+            <div id="result" class="scroll-box prose empty-state">
+              <p class="placeholder">Run a query to see the reply.</p>
             </div>
           </section>
 
           <div class="split">
             <section class="card output-card">
-              <h2 class="card-title">
-                <span class="card-icon" aria-hidden="true">🔧</span>
-                Tools
-              </h2>
-              <div id="actions" class="scroll-box tools-list" data-empty="No tool calls for this turn.">
+              <h2 class="card-title">Tools</h2>
+              <div id="actions" class="scroll-box tools-list">
                 <p class="placeholder">No tool calls yet.</p>
               </div>
             </section>
             <section class="card output-card">
-              <h2 class="card-title">
-                <span class="card-icon" aria-hidden="true">◎</span>
-                Timeline
-              </h2>
-              <div id="trace" class="scroll-box timeline" data-empty="Enable full trace to see each event.">
+              <h2 class="card-title">Timeline</h2>
+              <div id="trace" class="scroll-box timeline">
                 <p class="placeholder">Enable full trace to see each event.</p>
               </div>
             </section>
@@ -112,18 +98,18 @@
       </div>
 
       <footer class="foot">
-        <span><code>POST /query</code></span>
-        <a href="/docs">API docs</a>
+        <span><code class="foot-code">POST /query</code></span>
+        <a href="/docs">API</a>
         <a href="/health">Health</a>
-        <a href="/api/meta">Meta JSON</a>
-        <a href="/api/users/demo-user/memory">Memory JSON</a>
+        <a href="/api/meta">Meta</a>
+        <a href="/api/users/demo-user/memory">Memory</a>
       </footer>
     </div>
 
     <div id="loading" class="loading-overlay hidden" aria-hidden="true">
       <div class="loading-card">
         <div class="spinner" aria-hidden="true"></div>
-        <p>Running agents…</p>
+        <p>Working…</p>
       </div>
     </div>
 
