@@ -21,7 +21,12 @@ def _get_stack() -> list[Optional[Token]]:
     return s
 
 
-async def adk_before_tool(_tool: Any, _args: dict[str, Any], tool_context: ToolContext) -> None:
+async def adk_before_tool(
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+) -> None:
+    del args, tool  # ADK passes these by keyword; we only need session from tool_context.
     if ExecContextVar.get() is not None:
         _get_stack().append(None)
         return None
@@ -38,11 +43,12 @@ async def adk_before_tool(_tool: Any, _args: dict[str, Any], tool_context: ToolC
 
 
 async def adk_after_tool(
-    _tool: Any,
-    _args: dict[str, Any],
-    _tool_context: ToolContext,
-    _result: dict,
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+    tool_response: dict,
 ) -> None:
+    del tool, args, tool_context, tool_response
     stack = _get_stack()
     if not stack:
         return None
@@ -53,11 +59,12 @@ async def adk_after_tool(
 
 
 async def adk_on_tool_error(
-    _tool: Any,
-    _args: dict[str, Any],
-    _tool_context: ToolContext,
-    _err: Exception,
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+    error: Exception,
 ) -> None:
+    del tool, args, tool_context, error
     stack = _get_stack()
     if not stack:
         return None
