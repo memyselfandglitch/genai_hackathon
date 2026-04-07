@@ -1,4 +1,9 @@
+import { marked } from "https://cdn.jsdelivr.net/npm/marked@11.1.1/+esm";
+import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3.0.9/+esm";
+
 const $ = (id) => document.getElementById(id);
+
+marked.setOptions({ gfm: true, breaks: true });
 
 const SAMPLES = [
   "Build my daily brief for today: calendar, open tasks, notes about the board; flag conflicts and suggest a focus block.",
@@ -133,6 +138,12 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+/** Renders model markdown into safe HTML for the response panel. */
+function renderAssistantMarkdown(text) {
+  const raw = marked.parse(String(text || ""), { async: false });
+  return DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+}
+
 function setResultHtml(html, isEmpty) {
   const el = $("result");
   el.innerHTML = html;
@@ -177,7 +188,7 @@ async function runQuery() {
 
     const bodyHtml = [
       `<div class="status-line"><span class="pill ${ok ? "pill-ok" : "pill-err"}">${ok ? "ok" : "error"}</span></div>`,
-      `<div class="reply-body">${escapeHtml(data.result || "")}</div>`,
+      `<div class="reply-body md-reply">${renderAssistantMarkdown(data.result || "")}</div>`,
       data.error
         ? `<div class="err-block">${escapeHtml(data.error)}</div>`
         : "",

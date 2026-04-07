@@ -1,7 +1,13 @@
-"""Bind ExecContext during ADK tool calls when the outer FastAPI ExecContext is missing (e.g. isolated runners).
+"""Optional ADK tool callbacks (currently unused with FastAPI).
 
-ADK invokes before/after tool callbacks like ``callback(tool=..., args=..., tool_context=...)`` and types them as
-positional ``(BaseTool, dict, ToolContext)``. Use the same parameter names (not ``_tool`` / ``_args``).
+``POST /query`` uses :func:`app.workflows.executor.run_turn`, which calls
+``set_exec_context()`` for the whole turn. That context propagates to nested
+``AgentTool`` runs, so ``before_tool_callback`` / ``after_tool_callback`` are
+not required and some ADK versions mishandle callback signatures.
+
+If you run ``adk deploy cloud_run`` **without** this FastAPI executor, you may
+need to wire ``ExecContext`` again (e.g. re-attach these callbacks on the root
+``LlmAgent`` after verifying your ADK version's callback keyword names).
 """
 
 from __future__ import annotations
@@ -25,12 +31,43 @@ def _get_stack() -> list[Optional[Token]]:
     return s
 
 
+def _extract_tool_context(
+    tool_context: Optional[ToolContext] = None,
+    callback_context: Any = None,
+    **kwargs: Any,
+) -> Optional[ToolContext]:
+    """Accept both canonical and plugin-style ADK callback argument shapes."""
+    if tool_context is not None:
+        return tool_context
+    if isinstance(callback_context, ToolContext):
+        return callback_context
+    maybe_tool_context = kwargs.get("tool_context")
+    if isinstance(maybe_tool_context, ToolContext):
+        return maybe_tool_context
+    maybe_callback_context = kwargs.get("callback_context")
+    if isinstance(maybe_callback_context, ToolContext):
+        return maybe_callback_context
+    return None
+
+
 async def adk_before_tool(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: ToolContext,
+    *,
+    tool: Any = None,
+    args: Optional[dict[str, Any]] = None,
+    tool_args: Optional[dict[str, Any]] = None,
+    tool_context: Optional[ToolContext] = None,
+    callback_context: Any = None,
+    **kwargs: Any,
 ) -> Optional[dict[str, Any]]:
-    del tool, args
+    """Compatible with both older and newer ADK callback keyword names."""
+    del tool, args, tool_args
+    tool_context = _extract_tool_context(
+        tool_context=tool_context,
+        callback_context=callback_context,
+        **kwargs,
+    )
+    if tool_context is None:
+        return None
     if ExecContextVar.get() is not None:
         _get_stack().append(None)
         return None
@@ -47,12 +84,18 @@ async def adk_before_tool(
 
 
 async def adk_after_tool(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-    tool_response: dict,
+    *,
+    tool: Any = None,
+    args: Optional[dict[str, Any]] = None,
+    tool_args: Optional[dict[str, Any]] = None,
+    tool_context: Optional[ToolContext] = None,
+    callback_context: Any = None,
+    tool_response: Optional[dict[str, Any]] = None,
+    result: Optional[dict[str, Any]] = None,
+    **kwargs: Any,
 ) -> Optional[dict[str, Any]]:
-    del tool, args, tool_context, tool_response
+    """Compatible with both canonical and plugin-style ADK callback signatures."""
+    del tool, args, tool_args, tool_context, callback_context, tool_response, result, kwargs
     stack = _get_stack()
     if not stack:
         return None
@@ -63,12 +106,17 @@ async def adk_after_tool(
 
 
 async def adk_on_tool_error(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-    error: Exception,
+    *,
+    tool: Any = None,
+    args: Optional[dict[str, Any]] = None,
+    tool_args: Optional[dict[str, Any]] = None,
+    tool_context: Optional[ToolContext] = None,
+    callback_context: Any = None,
+    error: Optional[Exception] = None,
+    **kwargs: Any,
 ) -> Optional[dict[str, Any]]:
-    del tool, args, tool_context, error
+    """Compatible with both canonical and plugin-style ADK error callbacks."""
+    del tool, args, tool_args, tool_context, callback_context, error, kwargs
     stack = _get_stack()
     if not stack:
         return None
