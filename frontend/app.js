@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 const SAMPLES = [
+  "Build my daily brief for today: calendar, open tasks, notes about the board; flag conflicts and suggest a focus block.",
   "Create a daily brief for today and protect a deep-work block.",
   "Check my Google Calendar this afternoon and flag conflicts.",
   "Add a follow-up item to my Google Tasks.",
@@ -49,6 +50,9 @@ async function loadMeta() {
       `<span class="chip">${m.google_workspace_connected ? "Workspace connected" : "Workspace mock mode"}</span>`,
       `<span class="chip">Calendar <code>${escapeHtml(m.google_calendar_mode || "mock")}</code></span>`,
       `<span class="chip">Tasks <code>${escapeHtml(m.google_tasks_mode || "mock")}</code></span>`,
+      `<span class="chip">BigQuery <code>${escapeHtml(m.bigquery_mode || "mock")}</code></span>`,
+      `<span class="chip">Maps <code>${escapeHtml(m.maps_mode || "mock")}</code></span>`,
+      `<span class="chip">DB <code>${escapeHtml(m.database_mode || "sqlite")}</code></span>`,
     ];
     host.innerHTML = chips.join("");
   } catch {

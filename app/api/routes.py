@@ -42,6 +42,10 @@ async def health() -> dict[str, str]:
 async def api_meta() -> dict[str, Any]:
     """Runtime info for the debug UI and operators."""
     s = get_settings()
+    cal_mode = "mcp" if s.mcp_calendar_sse_url else ("rest" if s.google_workspace_access_token else "mock")
+    tasks_mode = "mcp" if s.mcp_tasks_sse_url else ("rest" if s.google_workspace_access_token else "mock")
+    db_url = (s.database_url or "").lower()
+    database_mode = "postgresql" if "postgresql" in db_url else "sqlite"
     return {
         "product": "executive-assistant",
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
@@ -50,8 +54,11 @@ async def api_meta() -> dict[str, Any]:
         "adk_app_name": s.app_name,
         "gemini_model": s.gemini_model,
         "google_workspace_connected": bool(s.google_workspace_access_token),
-        "google_calendar_mode": "mcp" if s.mcp_calendar_sse_url else ("rest" if s.google_workspace_access_token else "mock"),
-        "google_tasks_mode": "mcp" if s.mcp_tasks_sse_url else ("rest" if s.google_workspace_access_token else "mock"),
+        "google_calendar_mode": cal_mode,
+        "google_tasks_mode": tasks_mode,
+        "bigquery_mode": "mcp" if s.mcp_bigquery_sse_url else "mock",
+        "maps_mode": "mcp" if s.mcp_maps_sse_url else "mock",
+        "database_mode": database_mode,
         "note": "Default ADK app_name is 'agents' to align with stock LlmAgent origin in google.adk.agents.",
     }
 

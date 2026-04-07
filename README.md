@@ -41,6 +41,8 @@ hackathon/
 ├── .gitignore
 └── backend/
     ├── .env                 # local secrets (not committed)
+    ├── env.sample           # variable names template (copy to .env)
+    ├── scripts/deploy_cloud_run.sh
     ├── requirements.txt
     ├── README.md
     ├── exec_assistant.db      # SQLite if using default DATABASE_URL
@@ -163,11 +165,35 @@ Liveness check.
 
 ### `GET /api/meta`
 
-Python version, whether the MCP SDK can load, `adk_app_name`, `gemini_model`, and whether Google Calendar / Google Tasks are in `mock`, `rest`, or `mcp` mode.
+Python version, whether the MCP SDK can load, `adk_app_name`, `gemini_model`, Calendar / Tasks mode (`mock`, `rest`, `mcp`), **`bigquery_mode`** and **`maps_mode`** (`mcp` vs `mock`), and **`database_mode`** (`sqlite` vs `postgresql`) for hackathon demos.
 
 ### `GET /api/users/{user_id}/memory`
 
 Returns persisted conversation turns and workflow runs for a user. This is useful for demoing agent memory continuity and verifying that workflows are being stored in the database.
+
+## Hackathon judge demo (one scripted flow)
+
+Use this to show **multi-agent coordination**, **tools**, **DB memory**, and **API** in under five minutes.
+
+1. **Seed data** (optional but makes the brief rich): `PYTHONPATH=. python -m app.workflows.sample_workflows`
+2. **Open** `/ui/`, enable **Full trace**.
+3. **Killer prompt** (or paste into `curl` as `query`):
+
+   > *Build my daily brief for today: pull my calendar, open tasks, and any notes tagged “board”; call out conflicts and suggest one focus block. If the plan is busy, use reflection.*
+
+   Expect **`build_daily_brief_impl`** and/or multiple **`calendar_agent`**, **`task_agent`**, **`notes_agent`** tool calls in **Tools** / **Timeline**, plus a coherent **Response**.
+4. **Proof of persistence:** `GET /api/users/demo-user/memory` — conversation turns and workflow runs after the query.
+5. **Proof of stack:** `GET /api/meta` — confirm `adk_app_name`, `bigquery_mode` / `maps_mode` / Calendar / Tasks modes, and `database_mode`.
+
+**One-liner against a deployed base URL** (`$BASE` = `https://….run.app`, no trailing slash):
+
+```bash
+BASE=https://YOUR-SERVICE-XXXX.us-central1.run.app
+curl -s "$BASE/health" && curl -s "$BASE/api/meta" | jq .
+curl -s "$BASE/query?debug=true" -H "Content-Type: application/json" \
+  -d '{"user_id":"demo-user","query":"Build my daily brief for today: calendar, open tasks, notes about the board; flag conflicts and suggest a focus block."}' | jq '.status, (.actions | length)'
+curl -s "$BASE/api/users/demo-user/memory" | jq .
+```
 
 ## Example `curl` calls
 
@@ -213,6 +239,56 @@ If `/query` errors on the model, fix the API key; if the UI is 404, ensure `back
 ## Deployment (frontend + backend)
 
 The UI is static files under `frontend/` served by the **same** FastAPI process at `/ui/` — you deploy **one** container or process.
+
+### Google Cloud Run — FastAPI + UI (redeploy)
+
+From **`backend/`**, using Artifact Registry + Cloud Build:
+
+```bash
+export PROJECT=your-gcp-project-id
+export REGION=us-central1
+export SERVICE=executive-assistant
+export GOOGLE_API_KEY=your-gemini-key   # or omit and set secrets in Console
+
+./scripts/deploy_cloud_run.sh
+```
+
+The script creates the docker repo if missing, runs `gcloud builds submit`, then `gcloud run deploy`. Override **`PROJECT`**, **`REGION`**, **`SERVICE`**, **`ARTIFACT_REPO`** as needed.
+
+**Secrets (recommended):** create `GOOGLE_API_KEY` in [Secret Manager](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets), grant the Cloud Run service account **`roles/secretmanager.secretAccessor`**, then deploy with:
+
+```bash
+gcloud run deploy "${SERVICE}" \
+  --image "${IMAGE}" \
+  --region "${REGION}" \
+  --set-secrets="GOOGLE_API_KEY=GOOGLE_API_KEY:latest"
+```
+
+Add more env or secrets for **`DATABASE_URL`**, **`MCP_*_SSE_URL`**, **`GOOGLE_WORKSPACE_ACCESS_TOKEN`**, etc. Template variables: **[`env.sample`](env.sample)** (copy to `.env` locally; never commit `.env`).
+
+### Live MCP and Workspace (not only mocks)
+
+`/api/meta` shows **`mcp`** when SSE URLs are set, **`rest`** when **`GOOGLE_WORKSPACE_ACCESS_TOKEN`** is set (Calendar/Tasks), or **`mock`** otherwise.
+
+- Set **`MCP_BIGQUERY_SSE_URL`**, **`MCP_MAPS_SSE_URL`**, **`MCP_CALENDAR_SSE_URL`**, **`MCP_TASKS_SSE_URL`** to your MCP gateway base URLs (see [`app/tools/mcp_clients.py`](app/tools/mcp_clients.py)).
+- Or set **`GOOGLE_WORKSPACE_ACCESS_TOKEN`** for direct Calendar/Tasks REST without MCP.
+
+On Cloud Run, add the same names as environment variables or secrets.
+
+### Cloud SQL (PostgreSQL) for durable demos on Cloud Run
+
+SQLite on Cloud Run is **ephemeral**; instances scale out or restart and you lose local files.
+
+1. Create a [Cloud SQL Postgres](https://cloud.google.com/sql/docs/postgres/connect-run) instance and user.
+2. Set:
+
+   ```text
+   DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@/DBNAME?host=/cloudsql/PROJECT:REGION:INSTANCE
+   ```
+
+   (Use the Cloud Run **Cloud SQL connection** add-on; see Google’s “Connect from Cloud Run” guide for the exact socket host string.)
+
+3. Redeploy. **`GET /api/meta`** → `"database_mode": "postgresql"`. **`GET /api/users/.../memory`** survives restarts.
 
 ### Google Cloud — ADK `deploy cloud_run` (agents API)
 
