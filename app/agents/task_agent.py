@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.context import get_exec_context
-from app.core.tool_exec_bridge import adk_after_tool, adk_before_tool, adk_on_tool_error
 from app.core.logging import get_logger, trace_event
 from app.db.models import Task, UserPreference
 from app.db.session import get_session_factory
@@ -158,9 +157,6 @@ def create_task_agent() -> LlmAgent:
     return LlmAgent(
         model=settings.gemini_model,
         name="task_agent",
-        before_tool_callback=adk_before_tool,
-        after_tool_callback=adk_after_tool,
-        on_tool_error_callback=adk_on_tool_error,
         description="Manages user tasks: list, create/update, and prioritize work.",
         instruction=(
             "You are the task manager. Use tools to persist changes. "

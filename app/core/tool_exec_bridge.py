@@ -1,4 +1,8 @@
-"""Bind ExecContext during ADK tool calls (e.g. `adk deploy cloud_run`) when FastAPI middleware is absent."""
+"""Bind ExecContext during ADK tool calls when the outer FastAPI ExecContext is missing (e.g. isolated runners).
+
+ADK invokes before/after tool callbacks like ``callback(tool=..., args=..., tool_context=...)`` and types them as
+positional ``(BaseTool, dict, ToolContext)``. Use the same parameter names (not ``_tool`` / ``_args``).
+"""
 
 from __future__ import annotations
 
@@ -21,16 +25,12 @@ def _get_stack() -> list[Optional[Token]]:
     return s
 
 
-def _tool_context_from_kwargs(kwargs: dict[str, Any]) -> Optional[ToolContext]:
-    raw = kwargs.get("tool_context")
-    return raw if isinstance(raw, ToolContext) else None
-
-
-async def adk_before_tool(**kwargs: Any) -> Any:
-    """ADK may call with tool=, args=, tool_context= (agent) or tool_args= (plugins); accept all via kwargs."""
-    tool_context = _tool_context_from_kwargs(kwargs)
-    if tool_context is None:
-        return None
+async def adk_before_tool(
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+) -> Optional[dict[str, Any]]:
+    del tool, args
     if ExecContextVar.get() is not None:
         _get_stack().append(None)
         return None
@@ -46,8 +46,13 @@ async def adk_before_tool(**kwargs: Any) -> Any:
     return None
 
 
-async def adk_after_tool(**kwargs: Any) -> Any:
-    del kwargs
+async def adk_after_tool(
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+    tool_response: dict,
+) -> Optional[dict[str, Any]]:
+    del tool, args, tool_context, tool_response
     stack = _get_stack()
     if not stack:
         return None
@@ -57,8 +62,13 @@ async def adk_after_tool(**kwargs: Any) -> Any:
     return None
 
 
-async def adk_on_tool_error(**kwargs: Any) -> Any:
-    del kwargs
+async def adk_on_tool_error(
+    tool: Any,
+    args: dict[str, Any],
+    tool_context: ToolContext,
+    error: Exception,
+) -> Optional[dict[str, Any]]:
+    del tool, args, tool_context, error
     stack = _get_stack()
     if not stack:
         return None
