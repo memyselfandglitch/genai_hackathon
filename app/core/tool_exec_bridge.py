@@ -21,12 +21,16 @@ def _get_stack() -> list[Optional[Token]]:
     return s
 
 
-async def adk_before_tool(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-) -> None:
-    del args, tool  # ADK passes these by keyword; we only need session from tool_context.
+def _tool_context_from_kwargs(kwargs: dict[str, Any]) -> Optional[ToolContext]:
+    raw = kwargs.get("tool_context")
+    return raw if isinstance(raw, ToolContext) else None
+
+
+async def adk_before_tool(**kwargs: Any) -> Any:
+    """ADK may call with tool=, args=, tool_context= (agent) or tool_args= (plugins); accept all via kwargs."""
+    tool_context = _tool_context_from_kwargs(kwargs)
+    if tool_context is None:
+        return None
     if ExecContextVar.get() is not None:
         _get_stack().append(None)
         return None
@@ -42,13 +46,8 @@ async def adk_before_tool(
     return None
 
 
-async def adk_after_tool(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-    tool_response: dict,
-) -> None:
-    del tool, args, tool_context, tool_response
+async def adk_after_tool(**kwargs: Any) -> Any:
+    del kwargs
     stack = _get_stack()
     if not stack:
         return None
@@ -58,13 +57,8 @@ async def adk_after_tool(
     return None
 
 
-async def adk_on_tool_error(
-    tool: Any,
-    args: dict[str, Any],
-    tool_context: ToolContext,
-    error: Exception,
-) -> None:
-    del tool, args, tool_context, error
+async def adk_on_tool_error(**kwargs: Any) -> Any:
+    del kwargs
     stack = _get_stack()
     if not stack:
         return None
